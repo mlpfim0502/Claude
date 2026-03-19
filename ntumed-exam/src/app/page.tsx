@@ -56,6 +56,18 @@ export default function HomePage() {
           隨機練習（所有題庫）
         </Button>
       </Link>
+
+      <Link href="/progress" className="mt-2 block">
+        <Button variant="outline" className="w-full">
+          我的進度
+        </Button>
+      </Link>
+
+      <Link href="/review" className="mt-2 block">
+        <Button variant="outline" className="w-full">
+          錯題複習
+        </Button>
+      </Link>
     </div>
   )
 }
