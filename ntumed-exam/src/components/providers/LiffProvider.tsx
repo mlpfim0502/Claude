@@ -37,7 +37,7 @@ export function LiffProvider({ children }: { children: ReactNode }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: MOCK_PROFILE.userId, displayName: MOCK_PROFILE.displayName }),
-        }).catch(() => {/* ignore if API not ready yet */})
+        }).catch((e) => console.warn('[LiffProvider] mock upsert failed:', e))
         setIsLoading(false)
         return
       }
