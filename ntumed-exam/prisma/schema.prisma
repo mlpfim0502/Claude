@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum QuestionType {
+  MCQ
+  TF
+  MULTI
+  FIB
+  SAQ
+  ESSAY
+  ORDER
+  MATCH
+}
+
+model Subject {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  questions Question[]
+  createdAt DateTime   @default(now())
+
+  @@map("subjects")
+}
+
+model User {
+  id          String    @id @default(cuid())
+  lineUserId  String    @unique
+  displayName String
+  pictureUrl  String?
+  attempts    Attempt[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Question {
+  id             String       @id @default(cuid())
+  subjectId      String
+  subject        Subject      @relation(fields: [subjectId], references: [id])
+  questionType   QuestionType @default(MCQ)
+  batchYear      String?
+  questionNumber Int?
+  isActive       Boolean      @default(true)
+  stem           String
+  stemImages     String[]     @default([])
+  optionA        String?
+  optionB        String?
+  optionC        String?
+  optionD        String?
+  optionE        String?
+  answer         String?
+  explanation    String?
+  difficulty     Int?
+  tags           String[]     @default([])
+  sheetRowId     String?      @unique
+  lastSyncedAt   DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  attempts       Attempt[]
+
+  @@unique([batchYear, questionNumber])
+  @@map("questions")
+}
+
+model Attempt {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  questionId     String
+  question       Question @relation(fields: [questionId], references: [id])
+  selectedAnswer String?
+  isCorrect      Boolean?
+  timeSpentMs    Int?
+  attemptedAt    DateTime @default(now())
+
+  @@map("attempts")
+}
