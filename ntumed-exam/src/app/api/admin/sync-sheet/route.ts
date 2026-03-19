@@ -24,7 +24,7 @@ const ROW_SCHEMA = z.object({
   explanation: z.string().optional(),
   img_urls: z.string().optional(),
   tags: z.string().optional(),
-  difficulty: z.coerce.number().int().min(1).max(5).optional(),
+  difficulty: z.preprocess((v) => (v === '' ? undefined : v), z.coerce.number().int().min(1).max(5).optional()),
 })
 
 type SheetRow = z.infer<typeof ROW_SCHEMA>
@@ -91,39 +91,37 @@ export async function POST(req: NextRequest) {
         })
 
         const sheetRowId = `${tab}-${row.q_num}`
+        const updateData = {
+          stem: row.stem,
+          optionA: row.opt_a || null,
+          optionB: row.opt_b || null,
+          optionC: row.opt_c || null,
+          optionD: row.opt_d || null,
+          optionE: row.opt_e || null,
+          answer: row.answer || null,
+          explanation: row.explanation || null,
+          difficulty: row.difficulty ?? null,
+          tags: row.tags ? row.tags.split(',').map((t) => t.trim()) : [],
+          sheetRowId,
+          lastSyncedAt: new Date(),
+        }
+
+        // If a question exists by (batchYear, questionNumber) but lacks sheetRowId,
+        // claim it so the upsert by sheetRowId works on retry.
+        await prisma.question.updateMany({
+          where: { batchYear: tab, questionNumber: row.q_num, sheetRowId: null },
+          data: { sheetRowId },
+        })
 
         await prisma.question.upsert({
           where: { sheetRowId },
-          update: {
-            stem: row.stem,
-            optionA: row.opt_a || null,
-            optionB: row.opt_b || null,
-            optionC: row.opt_c || null,
-            optionD: row.opt_d || null,
-            optionE: row.opt_e || null,
-            answer: row.answer || null,
-            explanation: row.explanation || null,
-            difficulty: row.difficulty ?? null,
-            tags: row.tags ? row.tags.split(',').map((t) => t.trim()) : [],
-            lastSyncedAt: new Date(),
-          },
+          update: updateData,
           create: {
             subjectId: subject.id,
             batchYear: tab,
             questionNumber: row.q_num,
             questionType: row.type,
-            stem: row.stem,
-            optionA: row.opt_a || null,
-            optionB: row.opt_b || null,
-            optionC: row.opt_c || null,
-            optionD: row.opt_d || null,
-            optionE: row.opt_e || null,
-            answer: row.answer || null,
-            explanation: row.explanation || null,
-            difficulty: row.difficulty ?? null,
-            tags: row.tags ? row.tags.split(',').map((t) => t.trim()) : [],
-            sheetRowId,
-            lastSyncedAt: new Date(),
+            ...updateData,
           },
         })
 
