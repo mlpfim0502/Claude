@@ -1,0 +1,95 @@
+Schema
+prismamodel Question {
+  id            String       @id @default(cuid())
+  subjectId     String
+  subject       Subject      @relation(fields: [subjectId], references: [id])
+
+  // ── Identity ──────────────────────────────────────────
+  questionType  QuestionType @default(MCQ)
+  batchYear     String?      // "b09" | "b10" | "b11"
+  questionNumber Int?
+  isActive      Boolean      @default(true)
+
+  // ── Stem (all types) ──────────────────────────────────
+  stem          String       // supports markdown for bold/tables/etc.
+  stemImages    String[]     // images embedded in stem (clinical vignette photos)
+
+  // ── MCQ / MULTI options ───────────────────────────────
+  optionA       String?
+  optionB       String?
+  optionC       String?
+  optionD       String?
+  optionE       String?
+
+  // ── FIB: blank placeholder ────────────────────────────
+  // stem uses "___" or "{{blank}}" as placeholder
+  // e.g. "The classic triad of Cushing's is ___"
+  fibAcceptedAnswers  String[]  // ["hypercortisolemia", "high cortisol"] synonyms
+
+  // ── MATCH: pairs ──────────────────────────────────────
+  // stored as JSON: [{"left": "Type I DM", "right": "Islet destruction"}, ...]
+  matchingPairs Json?
+
+  // ── ORDER: sequence ───────────────────────────────────
+  // stored as JSON array of steps in CORRECT order
+  // displayed to user in shuffled order
+  // e.g. ["Incision", "Dissection", "Ligation", "Appendix removal", "Closure"]
+  orderedSteps  Json?
+
+  // ── Answers ───────────────────────────────────────────
+  // MCQ/TF   → "A" | "B" | "T" | "F"
+  // MULTI    → "ACD" (sorted, concatenated correct letters)
+  // FIB      → first item in fibAcceptedAnswers (canonical)
+  // SAQ/ESSAY → null (model answer is in modelAnswer)
+  // MATCH    → null (correct pairs are in matchingPairs)
+  // ORDER    → null (correct order is in orderedSteps)
+  answer        String?
+
+  // ── Explanation (all types) ───────────────────────────
+  explanation      String?     // markdown
+  explanationImgs  String[]    // image URLs
+
+  // ── SAQ / Essay model answers ─────────────────────────
+  modelAnswer      String?     // what a perfect answer looks like (markdown)
+  gradingRubric    String?     // e.g. "1pt: correct mechanism\n1pt: names enzyme"
+  keyPoints        String[]    // bullet points that MUST be mentioned for SAQ
+  
+  // ── Metadata ──────────────────────────────────────────
+  difficulty    Int?           // 1–5
+  tags          String[]
+  reference     String?        // "Sabiston 21e Ch.45"
+  
+  // ── Sync ──────────────────────────────────────────────
+  sheetRowId    String?        @unique
+  lastSyncedAt  DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  attempts      Attempt[]
+
+  @@unique([batchYear, questionNumber])
+  @@map("questions")
+}
+
+model Attempt {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  questionId      String
+  question        Question @relation(fields: [questionId], references: [id])
+
+  // What the user submitted
+  selectedAnswer  String?   // MCQ/TF/MULTI/FIB — the user's input
+  userTextAnswer  String?   // SAQ/Essay — optional, what they wrote (for review)
+  userMatchAnswer Json?     // MATCH — {"Type I DM": "Islet destruction", ...}
+  userOrderAnswer Json?     // ORDER — ["step3", "step1", "step2", ...]
+
+  // Outcome
+  isCorrect       Boolean?  // null = pending self-grade (SAQ/Essay)
+  selfRating      Int?      // SAQ/Essay: 0=wrong, 1=partial, 2=correct
+  timeSpentMs     Int?
+
+  attemptedAt     DateTime @default(now())
+
+  @@map("attempts")
+}
